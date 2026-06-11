@@ -1,0 +1,12 @@
+dataset: depth_test
+data_root: data/depth_test
+output_dir: results/depth_test/experiments/default
+model: lpiccinelli/unidepth-v2-vitl14
+device: auto
+resolution_level: 7
+sample_every: 5
+max_samples:
+min_depth_m: 0.001
+max_depth_m: 5.0
+viz_max_depth_m: 5.0
+

@@ -1,0 +1,41 @@
+# Local datasets, generated outputs, and model artifacts.
+# Keep lightweight config placeholders so GitHub shows the intended layout.
+data/**
+!data/
+!data/README.md
+!data/hypersim/
+!data/hypersim/README.md
+!data/hypersim/raw/
+!data/hypersim/raw/.gitkeep
+!data/hypersim/samples/
+!data/hypersim/samples/.gitkeep
+!data/depth_test/
+!data/depth_test/README.md
+
+# Generated results and report figures are committed separately.
+results/
+figures/
+
+outputs/
+checkpoints/
+
+# Large arrays and model weights
+*.npy
+*.npz
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+
+# Python/runtime clutter
+__pycache__/
+*.pyc
+.pytest_cache/
+
+.claude/
+/UniDepth/
+*.md
+docs/
+results_refactor_smoke/
+archive/
+res

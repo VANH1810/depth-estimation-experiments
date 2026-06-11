@@ -1,0 +1,12 @@
+dataset: hypersim
+data_root: data/hypersim/samples
+output_dir: results/hypersim/experiments/default
+model: lpiccinelli/unidepth-v2-vitl14
+device: auto
+resolution_level: 7
+sample_every: 1
+max_samples:
+min_depth_m: 0.001
+max_depth_m: 50.0
+viz_max_depth_m: 5.0
+

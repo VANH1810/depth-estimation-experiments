@@ -1,0 +1,19 @@
+dataset: depth_test
+metrics_csv: results/depth_test/experiments/default/metrics.csv
+summary_json: results/depth_test/experiments/default/summary.json
+min_depth_m: 0.001
+max_depth_m: 5.0
+metrics:
+  - d1
+  - d2
+  - d3
+  - arel
+  - sqrel
+  - rmse
+  - rmselog
+  - log10
+  - silog
+  - mae
+  - d1_ssi
+  - arel_ssi
+

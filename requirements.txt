@@ -1,0 +1,9 @@
+-r UniDepth/requirements.txt
+
+h5py
+matplotlib
+numpy
+opencv-python
+pillow
+torch
+transformers>=4.45.0
