@@ -42,8 +42,8 @@ Monocular metric depth estimation on real RGB-D sensor data and synthetic indoor
 
 | Member | Student ID | 
 | --- | --- | 
-| Tran Quoc Viet Anh | 23021475 | 
-| Duong Gia Bao | 23021471 | 
+| Tran Quoc Viet Anh | 23021471 | 
+| Duong Gia Bao | 23021475 | 
 | Vu Nhat Tuong Van | 23021747 | 
 | Bui Thu Phuong | 23021667 |
 
