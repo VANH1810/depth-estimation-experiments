@@ -1,6 +1,6 @@
-# HyperSim Data
+# Hypersim Data
 
-Use this directory for HyperSim data.
+Use this directory for Hypersim data.
 
 ```text
 data/hypersim/

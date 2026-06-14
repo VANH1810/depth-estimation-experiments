@@ -35,6 +35,7 @@ __pycache__/
 .claude/
 /UniDepth/
 *.md
+!/README.md
 docs/
 results_refactor_smoke/
 archive/
