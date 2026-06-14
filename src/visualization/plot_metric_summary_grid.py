@@ -11,6 +11,17 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from src.visualization.figure_utils import ResultEntry, entry_label, figure_suffix, save_figure
+from src.visualization.style import (
+    EDGE_COLOR,
+    FIGURE_FONT_SIZE,
+    GRID_COLOR,
+    apply_ieee_style,
+    bar_color_for_model,
+    hatch_for_model,
+)
+
+
+apply_ieee_style()
 
 
 METRICS = [
@@ -19,6 +30,25 @@ METRICS = [
     ("delta1", "δ1 ↑"),
     ("MAE", "MAE ↓"),
 ]
+
+
+def _model_labels(entries: list[ResultEntry]) -> list[str]:
+    return [
+        entry_label(entry, multiline=True, include_alignment=False).replace("DA-V2 Metric Base", "DA-V2 Metric\nBase")
+        for entry in entries
+    ]
+
+
+def _style_bars(bars, entries: list[ResultEntry], valid: np.ndarray) -> None:
+    valid_entries = [entry for entry, is_valid in zip(entries, valid) if is_valid]
+    for bar, entry in zip(bars, valid_entries):
+        color = bar_color_for_model(entry.model)
+        bar.set_facecolor(color)
+        bar.set_edgecolor(EDGE_COLOR)
+        bar.set_linewidth(0.45)
+        hatch = hatch_for_model(entry.model)
+        if hatch:
+            bar.set_hatch(hatch)
 
 
 def plot_metric_summary_grid(
@@ -35,15 +65,14 @@ def plot_metric_summary_grid(
         print(f"WARNING no entries for metric_summary_grid: {dataset} {protocol}")
         return None
 
-    labels = [entry_label(entry, multiline=True) for entry in entries]
+    labels = _model_labels(entries)
     ncols = 2
     nrows = 2
-    fig, axes = plt.subplots(nrows, ncols, figsize=(max(8.0, len(labels) * 1.45), 7.0), constrained_layout=True)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(max(9.4, len(labels) * 2.55), 7.8), constrained_layout=True)
     axes = np.ravel(axes)
-    colors = plt.get_cmap("Set2")(np.linspace(0.05, 0.75, len(entries)))
 
     plotted_any = False
-    for ax, (metric, title) in zip(axes, METRICS):
+    for ax, (metric, label) in zip(axes, METRICS):
         values = [entry.metric_value(metric) for entry in entries]
         numeric = np.array([np.nan if value is None else float(value) for value in values], dtype=float)
         valid = np.isfinite(numeric)
@@ -51,12 +80,13 @@ def plot_metric_summary_grid(
             ax.axis("off")
             continue
         x = np.arange(len(entries))
-        ax.bar(x[valid], numeric[valid], color=colors[valid], edgecolor="#333333", linewidth=0.45)
-        ax.set_title(title, fontsize=11, fontweight="bold")
+        bars = ax.bar(x[valid], numeric[valid])
+        _style_bars(bars, entries, valid)
+        ax.set_title(label, fontsize=FIGURE_FONT_SIZE, fontweight="bold")
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, rotation=25, ha="right", fontsize=8)
+        ax.set_xticklabels(labels, rotation=0, ha="center", fontsize=FIGURE_FONT_SIZE)
         ax.set_ylabel(metric)
-        ax.grid(axis="y", alpha=0.25, linewidth=0.7)
+        ax.grid(axis="y", color=GRID_COLOR, alpha=0.25, linewidth=0.7)
         ymax = float(np.nanmax(numeric[valid]))
         ymin = float(np.nanmin(numeric[valid]))
         if metric == "delta1":
@@ -67,18 +97,13 @@ def plot_metric_summary_grid(
             if not np.isfinite(value):
                 continue
             offset = 0.01 * (ax.get_ylim()[1] - ax.get_ylim()[0])
-            ax.text(idx, value + offset, f"{value:.3g}", ha="center", va="bottom", fontsize=7)
+            ax.text(idx, value + offset, f"{value:.3g}", ha="center", va="bottom", fontsize=FIGURE_FONT_SIZE)
         plotted_any = True
 
     if not plotted_any:
         plt.close(fig)
         print(f"WARNING metric_summary_grid has no numeric metrics: {dataset} {protocol}")
         return None
-
-    title = f"{dataset}: metric summary grid"
-    if protocol != "primary" or include_reference:
-        title += f" ({protocol}{' + reference' if include_reference else ''})"
-    fig.suptitle(title, fontsize=13, fontweight="bold")
 
     suffix = figure_suffix(protocol, include_reference)
     return save_figure(
@@ -102,10 +127,9 @@ def plot_legacy_metric_figures(
     paths: list[Path] = []
     if not entries:
         return paths
-    labels = [entry_label(entry, multiline=True) for entry in entries]
-    colors = plt.get_cmap("Set2")(np.linspace(0.05, 0.75, len(entries)))
+    labels = _model_labels(entries)
     suffix = figure_suffix(protocol, include_reference)
-    for metric, title in METRICS[:3]:
+    for metric, label in METRICS[:3]:
         values = np.array(
             [np.nan if entry.metric_value(metric) is None else float(entry.metric_value(metric)) for entry in entries],
             dtype=float,
@@ -113,14 +137,15 @@ def plot_legacy_metric_figures(
         valid = np.isfinite(values)
         if not valid.any():
             continue
-        fig, ax = plt.subplots(figsize=(max(7.5, len(labels) * 1.25), 4.8), constrained_layout=True)
+        fig, ax = plt.subplots(figsize=(max(9.0, len(labels) * 2.45), 5.8), constrained_layout=True)
         x = np.arange(len(entries))
-        ax.bar(x[valid], values[valid], color=colors[valid], edgecolor="#333333", linewidth=0.45)
-        ax.set_title(f"{dataset}: {title}", fontsize=12, fontweight="bold")
+        bars = ax.bar(x[valid], values[valid])
+        _style_bars(bars, entries, valid)
+        ax.set_title(label, fontsize=FIGURE_FONT_SIZE, fontweight="bold")
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, rotation=25, ha="right", fontsize=8)
+        ax.set_xticklabels(labels, rotation=0, ha="center", fontsize=FIGURE_FONT_SIZE)
         ax.set_ylabel(metric)
-        ax.grid(axis="y", alpha=0.25)
+        ax.grid(axis="y", color=GRID_COLOR, alpha=0.25)
         out = save_figure(
             fig,
             Path(output_dir) / f"{dataset}_{metric.lower()}_comparison{suffix}.png",

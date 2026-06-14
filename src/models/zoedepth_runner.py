@@ -47,7 +47,7 @@ class ZoeDepthRunner:
         self.model = AutoModelForDepthEstimation.from_pretrained(self.model_id)
         self.model.to(self.device).eval()
 
-    def predict(self, rgb: np.ndarray) -> DepthPrediction:
+    def predict(self, rgb: np.ndarray, intrinsics: np.ndarray | None = None) -> DepthPrediction:
         if self.model is None or self.processor is None or self.device is None:
             raise RuntimeError("ZoeDepthRunner.load() must be called before predict().")
         image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")

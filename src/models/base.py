@@ -34,5 +34,5 @@ class DepthModelRunner(Protocol):
     def load(self) -> None:
         """Load model weights and move the model to the configured device."""
 
-    def predict(self, rgb: np.ndarray) -> DepthPrediction:
+    def predict(self, rgb: np.ndarray, intrinsics: np.ndarray | None = None) -> DepthPrediction:
         """Return a single-image depth prediction as a float32 HxW array."""

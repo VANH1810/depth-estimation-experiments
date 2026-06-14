@@ -10,6 +10,8 @@ from PIL import Image
 matplotlib.use("Agg")
 from matplotlib import colormaps  # noqa: E402
 
+from src.visualization.style import DEPTH_CMAP, ERROR_CMAP
+
 
 def _colorize(array: np.ndarray, vmin: float, vmax: float, cmap: str) -> np.ndarray:
     data = np.nan_to_num(array.astype(np.float32), nan=0.0, posinf=0.0, neginf=0.0)
@@ -20,7 +22,7 @@ def _colorize(array: np.ndarray, vmin: float, vmax: float, cmap: str) -> np.ndar
     return (rgb * 255.0).astype(np.uint8)
 
 
-def _colorize_relative(array: np.ndarray, cmap: str = "magma_r") -> np.ndarray:
+def _colorize_relative(array: np.ndarray, cmap: str = DEPTH_CMAP) -> np.ndarray:
     finite = array[np.isfinite(array)]
     finite = finite[finite > 0.0]
     if finite.size == 0:
@@ -57,17 +59,17 @@ def save_depth_visualization(
 
     target_shape = gt_depth.shape
     rgb_view = _resize_rgb(rgb, target_shape)
-    gt_col = _colorize(gt_depth, min_depth, max_depth, "magma_r")
+    gt_col = _colorize(gt_depth, min_depth, max_depth, DEPTH_CMAP)
 
     if prediction_type == "relative" and alignment == "raw":
         pred_col = _colorize_relative(pred_depth)
         error_col = np.zeros_like(pred_col)
     else:
-        pred_col = _colorize(pred_depth, min_depth, max_depth, "magma_r")
+        pred_col = _colorize(pred_depth, min_depth, max_depth, DEPTH_CMAP)
         valid = np.isfinite(gt_depth) & np.isfinite(pred_depth) & (gt_depth > min_depth) & (pred_depth > min_depth)
         error = np.zeros_like(gt_depth, dtype=np.float32)
         error[valid] = np.abs(gt_depth[valid] - pred_depth[valid]) / np.maximum(gt_depth[valid], 1e-6)
-        error_col = _colorize(error, 0.0, 0.3, "coolwarm")
+        error_col = _colorize(error, 0.0, 0.3, ERROR_CMAP)
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

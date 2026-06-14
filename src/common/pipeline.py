@@ -14,6 +14,8 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 
+from src.visualization.style import DEPTH_CMAP, ERROR_CMAP
+
 
 METRIC_COLUMNS = [
     "sample_id",
@@ -96,11 +98,19 @@ def rgb_to_tensor(rgb: np.ndarray, device: torch.device) -> torch.Tensor:
     return torch.from_numpy(np.ascontiguousarray(rgb)).permute(2, 0, 1).to(device)
 
 
-def predict_depth(model, rgb: np.ndarray, device: torch.device) -> np.ndarray:
+def predict_depth(
+    model,
+    rgb: np.ndarray,
+    device: torch.device,
+    intrinsics: np.ndarray | None = None,
+) -> np.ndarray:
     rgb_tensor = rgb_to_tensor(rgb, device)
+    camera = None
+    if intrinsics is not None:
+        camera = torch.from_numpy(np.asarray(intrinsics, dtype=np.float32)).to(device)
     with torch.inference_mode():
-        # Match Depth_Test zero-shot setup: camera=None lets UniDepth predict intrinsics.
-        pred = model.infer(rgb_tensor, camera=None, normalize=True)
+        # camera=None keeps the legacy zero-shot setup where UniDepth predicts intrinsics.
+        pred = model.infer(rgb_tensor, camera=camera, normalize=True)
     depth = pred["depth"].squeeze().detach().float().cpu()
     return depth.numpy().astype(np.float32)
 
@@ -354,7 +364,7 @@ class HypersimDataset:
             )
 
 
-def colorize_depth(array: np.ndarray, vmin: float, vmax: float, cmap: str = "magma_r") -> np.ndarray:
+def colorize_depth(array: np.ndarray, vmin: float, vmax: float, cmap: str = DEPTH_CMAP) -> np.ndarray:
     ensure_unidepth_import()
     from unidepth.utils import colorize
 
@@ -376,9 +386,9 @@ def save_visualization(
     error = np.zeros_like(sample.depth, dtype=np.float32)
     error[valid] = np.abs(sample.depth[valid] - depth_pred[valid]) / np.maximum(sample.depth[valid], 1e-6)
 
-    gt_col = colorize_depth(sample.depth, vmin=depth_vmin, vmax=depth_vmax, cmap="magma_r")
-    pred_col = colorize_depth(depth_pred, vmin=depth_vmin, vmax=depth_vmax, cmap="magma_r")
-    err_col = colorize_depth(error, vmin=0.0, vmax=0.3, cmap="coolwarm")
+    gt_col = colorize_depth(sample.depth, vmin=depth_vmin, vmax=depth_vmax, cmap=DEPTH_CMAP)
+    pred_col = colorize_depth(depth_pred, vmin=depth_vmin, vmax=depth_vmax, cmap=DEPTH_CMAP)
+    err_col = colorize_depth(error, vmin=0.0, vmax=0.3, cmap=ERROR_CMAP)
     grid = image_grid([sample.image, gt_col, pred_col, err_col], 2, 2)
     Image.fromarray(grid).save(output_path)
 

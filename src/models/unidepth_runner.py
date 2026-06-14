@@ -43,10 +43,10 @@ class UniDepthRunner:
             unidepth_root=self.unidepth_root,
         )
 
-    def predict(self, rgb: np.ndarray) -> DepthPrediction:
+    def predict(self, rgb: np.ndarray, intrinsics: np.ndarray | None = None) -> DepthPrediction:
         if self.model is None or self.device is None:
             raise RuntimeError("UniDepthRunner.load() must be called before predict().")
-        depth = predict_depth(self.model, rgb, self.device)
+        depth = predict_depth(self.model, rgb, self.device, intrinsics=intrinsics)
         return DepthPrediction(
             depth=depth.astype(np.float32, copy=False),
             prediction_type=self.prediction_type,

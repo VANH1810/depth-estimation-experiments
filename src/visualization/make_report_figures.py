@@ -5,98 +5,129 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from src.visualization.figure_utils import ResultEntry, load_results_index, resolve_models_for_protocol
+from src.visualization.figure_utils import DEFAULT_REPORT_MODELS, ResultEntry, load_results_index, select_metric_raw_entries
 from src.visualization.plot_metric_summary_grid import plot_legacy_metric_figures, plot_metric_summary_grid
-from src.visualization.plot_qualitative_samples import plot_qualitative_samples
+from src.visualization.plot_qualitative_samples import plot_combined_qualitative_samples, plot_qualitative_samples
 from src.visualization.plot_scatter_pred_vs_gt import plot_scatter_pred_vs_gt
+from src.visualization.style import apply_ieee_style
 
 
-DEFAULT_FIGURES = ["metric_summary_grid", "scatter_pred_vs_gt", "qualitative_samples"]
+apply_ieee_style()
 
 
-def _write_report(
-    *,
-    results_root: Path,
-    output_dir: Path,
-    datasets: list[str],
-    protocol: str,
-    include_reference: bool,
-    overwrite: bool,
-) -> None:
-    path = results_root / "report_experiments.md"
+DEFAULT_FIGURES = [
+    "metric_summary_grid",
+    "scatter_pred_vs_gt",
+    "qualitative_samples",
+    "qualitative_samples_combined",
+]
+
+
+def _write_figures_readme(*, output_dir: Path, datasets: list[str], overwrite: bool) -> None:
+    path = output_dir / "README.md"
     if path.exists() and not overwrite:
-        print(f"skip existing report: {path}")
+        print(f"skip existing figure README: {path}")
         return
+
     lines = [
-        "# Depth Experiment Report",
+        "# Figure Captions",
         "",
-        "## Experiment Setup",
-        "- Datasets: " + ", ".join(datasets),
-        "- Models: UniDepth, ZoeDepth, Depth Anything V2 Small, and available Depth Anything V2 Metric variants.",
-        "- Metrics: AbsRel, SqRel, RMSE, RMSE_log, MAE, delta1, delta2, delta3, log10, SILog.",
-        "- Protocol groups: `primary_metric_raw`, `relative_raw`, `relative_aligned`, `train_overlap_reference`.",
-        "- Default report figures use `--protocol primary`, so raw relative-depth outputs are not mixed with metric-depth plots.",
+        "These figures use raw metric-depth predictions from UniDepth, ZoeDepth, and DA-V2 Metric Base.",
+        "Depth Anything V2 Small relative outputs and aligned variants are excluded from the main figures.",
         "",
-        "## Primary Metric Results",
     ]
     for dataset in datasets:
-        comparison_dir = results_root / dataset / "comparison"
-        summary = comparison_dir / "comparison_summary.md"
-        primary = comparison_dir / "primary_metric_raw_comparison.md"
-        aligned = comparison_dir / "aligned_relative_comparison.md"
-        relative_raw = comparison_dir / "relative_raw_comparison.md"
-        train_overlap = comparison_dir / "train_overlap_reference_comparison.md"
+        if dataset == "depth_test":
+            metric_caption = (
+                "Metric comparison on depth_test using raw metric-depth predictions from UniDepth, ZoeDepth, "
+                "and DA-V2 Metric Base."
+            )
+            qualitative_caption = (
+                "Qualitative results on depth_test. Each pair of consecutive rows corresponds to one test sample. "
+                "The odd row shows the RGB image and error-colored prediction maps using coolwarm based on absolute "
+                "relative error. The even row shows GT depth and predicted depth. The last column shows the colormap "
+                "ranges for depth and error."
+            )
+            scatter_caption = (
+                "Predicted depth versus GT depth scatter plots for the three metric-depth models on depth_test. "
+                "The diagonal line indicates perfect metric prediction."
+            )
+        elif dataset == "hypersim":
+            metric_caption = (
+                "Metric comparison on hypersim using raw metric-depth predictions from UniDepth, ZoeDepth, and "
+                "DA-V2 Metric Base. DA-V2 Metric Base is included as a reference, not as a main few-shot baseline, "
+                "if its checkpoint has Hypersim train/fine-tune overlap."
+            )
+            qualitative_caption = (
+                "Qualitative results on hypersim using UniDepth, ZoeDepth, and DA-V2 Metric Base. DA-V2 Metric Base "
+                "is shown only as a reference if the checkpoint has Hypersim train/fine-tune overlap."
+            )
+            scatter_caption = (
+                "Predicted depth versus GT depth scatter plots for the three metric-depth models on hypersim. "
+                "DA-V2 Metric Base should be interpreted carefully if it has train/fine-tune overlap with Hypersim."
+            )
+        else:
+            metric_caption = (
+                f"Metric comparison on {dataset} using raw metric-depth predictions from UniDepth, ZoeDepth, "
+                "and DA-V2 Metric Base."
+            )
+            qualitative_caption = (
+                f"Qualitative results on {dataset}. Each pair of consecutive rows corresponds to one test sample."
+            )
+            scatter_caption = (
+                f"Predicted depth versus GT depth scatter plots for the three metric-depth models on {dataset}."
+            )
+
         lines += [
-            f"### {dataset}",
-            f"- Full summary: `{summary}`",
-            f"- Primary metric raw comparison: `{primary}`",
-            f"- Relative aligned comparison: `{aligned}`",
-            f"- Relative raw comparison: `{relative_raw}`",
-            f"- Train-overlap reference comparison: `{train_overlap}`",
+            f"## {dataset}_metric_summary_grid.png",
+            "Caption:",
+            metric_caption,
+            "",
+            f"## {dataset}_qualitative_samples.png",
+            "Caption:",
+            qualitative_caption,
+            "",
+            f"## {dataset}_scatter_pred_vs_gt.png",
+            "Caption:",
+            scatter_caption,
+            "",
         ]
-        if primary.exists():
-            lines.append("")
-            lines.extend(primary.read_text(encoding="utf-8").splitlines()[:12])
-            lines.append("")
+
+    if {"depth_test", "hypersim"}.issubset(set(datasets)):
+        lines += [
+            "## depth_hypersim_qualitative_samples.png",
+            "Caption:",
+            "Combined qualitative results for depth_test and hypersim using raw metric-depth predictions from "
+            "UniDepth, ZoeDepth, and DA-V2 Metric Base. The figure contains one representative sample from "
+            "depth_test and one representative sample from hypersim while keeping the same qualitative layout. "
+            "Columns show RGB/GT, UniDepth, ZoeDepth, DA-V2 Metric Base, and the colormap ranges for absolute "
+            "relative error and depth. Dataset labels mark each dataset group, a light horizontal separator "
+            "distinguishes the datasets, and a subtle vertical separator separates the RGB/GT column from the "
+            "model prediction columns.",
+            "",
+        ]
 
     lines += [
-        "## Visualization Figures",
-        f"- Figure output directory: `{output_dir}`",
-        f"- Active protocol for this report run: `{protocol}`.",
-        f"- Include train-overlap/reference rows in figures: `{include_reference}`.",
-        "",
-        "### `metric_summary_grid`",
-        "- The previous per-metric files such as `absrel_comparison.png`, `rmse_comparison.png`, and `delta1_comparison.png` are replaced by one multi-panel figure per dataset/protocol.",
-        "- Subplots use separate y-axes and mark metric direction in the title: AbsRel ↓, RMSE ↓, delta1 ↑, and MAE ↓.",
-        "",
-        "### `scatter_pred_vs_gt`",
-        "- Scatter plots show valid GT depth on the x-axis and predicted depth on the y-axis with a `y = x` reference line.",
-        "- Points are sampled reproducibly across images instead of drawing every pixel.",
-        "- Raw relative-depth predictions are excluded from metric-depth scatter figures; aligned relative predictions are labeled with their alignment mode when requested.",
-        "",
-        "### `qualitative_samples`",
-        "- Zero-shot qualitative results. Each pair of consecutive rows corresponds to one test sample. Each odd row shows the input RGB image and the fallback prediction map color-coded with coolwarm based on the absolute relative error. Each even row shows GT depth and predicted depth. The last column represents the colormap ranges for depth and error.",
-        "- The current implementation uses an error-colored depth-map fallback, not a true 3D pointcloud render, because there is no shared pointcloud renderer/intrinsics path wired into the report figure generator.",
-        "",
-        "## Relative / Aligned Results",
-        "- Depth Anything V2 Small is a relative-depth checkpoint. Its raw output has no meter unit.",
-        "- `median_aligned` and `scale_shift_aligned` use ground-truth valid pixels for fitting and should be reported as supplementary shape/order analysis.",
-        "",
-        "## Hypersim Train-overlap Reference",
-        "- Depth Anything V2 Metric Indoor is tagged as `train_overlap_reference` on HyperSim and is excluded from primary figures unless `--include-reference` is set.",
-        "",
         "## Reproducibility",
-        "- Main figure command:",
-        "  `python -m src.visualization.make_report_figures --results-root results --datasets depth_test hypersim --output-dir results/figures --figures metric_summary_grid scatter_pred_vs_gt qualitative_samples --max-points 100000 --num-qualitative-samples 4 --overwrite`",
-        "- Supplementary aligned figure command:",
-        "  `python -m src.visualization.make_report_figures --results-root results --datasets depth_test hypersim --output-dir results/figures/supplementary --protocol aligned --figures metric_summary_grid scatter_pred_vs_gt qualitative_samples --overwrite`",
+        "```bash",
+        "python -m src.visualization.make_report_figures \\",
+        "  --results-root results \\",
+        "  --datasets depth_test hypersim \\",
+        "  --output-dir results/figures \\",
+        "  --figures metric_summary_grid scatter_pred_vs_gt qualitative_samples qualitative_samples_combined \\",
+        "  --models unidepth zoedepth depth_anything_v2_metric_indoor_base \\",
+        "  --num-qualitative-samples 2 \\",
+        "  --max-points 100000 \\",
+        "  --overwrite",
+        "```",
     ]
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"wrote report: {path}")
+    print(f"wrote figure README: {path}")
 
 
 def _figure_entries(entries: list[ResultEntry], figure_name: str) -> list[ResultEntry]:
-    if figure_name in {"scatter_pred_vs_gt", "qualitative_samples"}:
+    if figure_name in {"scatter_pred_vs_gt", "qualitative_samples", "qualitative_samples_combined"}:
         return [entry for entry in entries if entry.protocol_group != "relative_raw"]
     return entries
 
@@ -110,16 +141,14 @@ def run(args: argparse.Namespace) -> None:
         num_qualitative_samples = args.max_samples
 
     generated: list[Path] = []
+    qualitative_groups: list[tuple[str, list[ResultEntry]]] = []
     for dataset in args.datasets:
         index = load_results_index(results_root, dataset)
-        selected = resolve_models_for_protocol(
-            index,
-            protocol=args.protocol,
-            include_reference=args.include_reference,
-        )
+        selected = select_metric_raw_entries(index, args.models)
         if not selected:
-            print(f"WARNING no selected result rows for dataset={dataset}, protocol={args.protocol}")
+            print(f"WARNING no selected metric raw result rows for dataset={dataset}, models={args.models}")
             continue
+        qualitative_groups.append((dataset, _figure_entries(selected, "qualitative_samples_combined")))
 
         if "metric_summary_grid" in args.figures:
             out = plot_metric_summary_grid(
@@ -179,14 +208,25 @@ def run(args: argparse.Namespace) -> None:
             if out is not None:
                 generated.append(out)
 
-    _write_report(
-        results_root=results_root,
-        output_dir=output_dir,
-        datasets=args.datasets,
-        protocol=args.protocol,
-        include_reference=args.include_reference,
-        overwrite=args.overwrite,
-    )
+    if "qualitative_samples_combined" in args.figures and len(qualitative_groups) >= 2:
+        preferred_order = {"depth_test": 0, "hypersim": 1}
+        qualitative_groups = sorted(qualitative_groups, key=lambda item: preferred_order.get(item[0], 99))
+        out = plot_combined_qualitative_samples(
+            qualitative_groups,
+            output_dir=output_dir,
+            protocol=args.protocol,
+            include_reference=args.include_reference,
+            num_samples=num_qualitative_samples,
+            sample_strategy=args.sample_strategy,
+            fixed_sample_ids=args.fixed_sample_ids,
+            seed=args.seed,
+            dpi=args.dpi,
+            overwrite=args.overwrite,
+        )
+        if out is not None:
+            generated.append(out)
+
+    _write_figures_readme(output_dir=output_dir, datasets=args.datasets, overwrite=args.overwrite)
     print(f"generated {len(generated)} figure(s)")
 
 
@@ -196,8 +236,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--datasets", nargs="+", default=["depth_test", "hypersim"])
     parser.add_argument("--output-dir", default="results/figures")
     parser.add_argument("--figures", nargs="+", default=DEFAULT_FIGURES, choices=DEFAULT_FIGURES)
+    parser.add_argument("--models", nargs="+", default=DEFAULT_REPORT_MODELS)
     parser.add_argument("--max-points", type=int, default=100000)
-    parser.add_argument("--num-qualitative-samples", type=int, default=4)
+    parser.add_argument("--num-qualitative-samples", type=int, default=2)
     parser.add_argument(
         "--sample-strategy",
         default="median_absrel",

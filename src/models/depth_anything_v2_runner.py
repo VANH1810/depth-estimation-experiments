@@ -85,7 +85,7 @@ class DepthAnythingV2SmallRunner:
         self.model = AutoModelForDepthEstimation.from_pretrained(self.transformers_model_id)
         self.model.to(self.device).eval()
 
-    def predict(self, rgb: np.ndarray) -> DepthPrediction:
+    def predict(self, rgb: np.ndarray, intrinsics: np.ndarray | None = None) -> DepthPrediction:
         if self.model is None or self.processor is None or self.device is None:
             raise RuntimeError("DepthAnythingV2SmallRunner.load() must be called before predict().")
         image = Image.fromarray(rgb.astype(np.uint8), mode="RGB")

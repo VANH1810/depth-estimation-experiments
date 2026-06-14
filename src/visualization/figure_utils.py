@@ -17,6 +17,11 @@ from PIL import Image
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
+from src.visualization.style import apply_ieee_style  # noqa: E402
+
+
+apply_ieee_style()
+
 
 MODEL_LABELS = {
     "unidepth": "UniDepth",
@@ -27,12 +32,31 @@ MODEL_LABELS = {
     "depth_anything_v2_metric_indoor_base": "DA-V2 Metric Base",
 }
 
+COMPACT_MODEL_LABELS = {
+    "unidepth": "UniDepth",
+    "zoedepth": "ZoeDepth",
+    "depth_anything_v2_metric_indoor_base": "DA-V2 Metric",
+}
+
 MODEL_ORDER = {
     "unidepth": 0,
     "zoedepth": 1,
-    "depth_anything_v2_metric_indoor_small": 2,
-    "depth_anything_v2_metric_indoor_base": 3,
+    "depth_anything_v2_metric_indoor_base": 2,
+    "depth_anything_v2_metric_indoor_small": 3,
     "depth_anything_v2_small": 4,
+}
+
+DEFAULT_REPORT_MODELS = [
+    "unidepth",
+    "zoedepth",
+    "depth_anything_v2_metric_indoor_base",
+]
+
+MODEL_ALIASES = {
+    "dav2_metric_base": "depth_anything_v2_metric_indoor_base",
+    "da-v2-metric-base": "depth_anything_v2_metric_indoor_base",
+    "depth_anything_v2_metric_base": "depth_anything_v2_metric_indoor_base",
+    "depth_anything_v2_metric_indoor": "depth_anything_v2_metric_indoor_base",
 }
 
 ALIGNMENT_LABELS = {
@@ -269,6 +293,28 @@ def resolve_models_for_protocol(
     return sorted(unique.values(), key=lambda item: _sort_key(item))
 
 
+def normalize_report_model_key(model: str) -> str:
+    normalized = model.strip()
+    return MODEL_ALIASES.get(normalized, normalized)
+
+
+def select_metric_raw_entries(entries: list[ResultEntry], models: list[str]) -> list[ResultEntry]:
+    """Select explicit metric-depth raw result rows in the requested model order."""
+
+    requested = [normalize_report_model_key(model) for model in models]
+    requested_set = set(requested)
+    by_model: dict[str, ResultEntry] = {}
+    for entry in entries:
+        if entry.model not in requested_set:
+            continue
+        if entry.alignment != "raw":
+            continue
+        if entry.prediction_type != "metric":
+            continue
+        by_model[entry.model] = entry
+    return [by_model[model] for model in requested if model in by_model]
+
+
 def _sort_key(entry: ResultEntry) -> tuple[int, int, float]:
     metric = entry.metric_value("AbsRel")
     return (
@@ -280,6 +326,10 @@ def _sort_key(entry: ResultEntry) -> tuple[int, int, float]:
 
 def short_model_label(model: str) -> str:
     return MODEL_LABELS.get(model, model.replace("_", " "))
+
+
+def compact_model_label(model: str) -> str:
+    return COMPACT_MODEL_LABELS.get(model, short_model_label(model))
 
 
 def entry_label(entry: ResultEntry, *, multiline: bool = False, include_alignment: bool = True) -> str:

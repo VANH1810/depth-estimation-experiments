@@ -11,6 +11,7 @@ import numpy as np
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.ticker import MultipleLocator  # noqa: E402
 
 from src.visualization.figure_utils import (
     ResultEntry,
@@ -24,6 +25,22 @@ from src.visualization.figure_utils import (
     sample_valid_points,
     save_figure,
 )
+from src.visualization.style import (
+    ANNOTATION_EDGE_COLOR,
+    ANNOTATION_FACE_COLOR,
+    FIGURE_FONT_SIZE,
+    GRID_COLOR,
+    REFERENCE_LINE_COLOR,
+    SCATTER_COLOR,
+    apply_ieee_style,
+)
+
+
+apply_ieee_style()
+
+
+HYPERSIM_SCATTER_PERCENTILE_LIMITS = (1.0, 99.0)
+HYPERSIM_SCATTER_TICK_STEP = 1.0
 
 
 def _stable_seed(seed: int, dataset: str, model: str, alignment: str) -> int:
@@ -45,8 +62,12 @@ def _collect_points(
     if rows.empty:
         return np.array([], dtype=np.float32), np.array([], dtype=np.float32)
 
-    per_image = max(1, math.ceil(max_points / len(rows)))
     rng = np.random.default_rng(_stable_seed(seed, entry.dataset, entry.model, entry.alignment))
+    max_images = min(len(rows), max(8, math.ceil(max_points / 1000)))
+    if len(rows) > max_images:
+        chosen = np.sort(rng.choice(len(rows), size=max_images, replace=False))
+        rows = rows.iloc[chosen]
+    per_image = max(1, math.ceil(max_points / len(rows)))
     gt_chunks: list[np.ndarray] = []
     pred_chunks: list[np.ndarray] = []
 
@@ -82,6 +103,16 @@ def _collect_points(
         gt_all = gt_all[indices]
         pred_all = pred_all[indices]
     return gt_all, pred_all
+
+
+def _hypersim_axis_limits(values: np.ndarray) -> tuple[float, float]:
+    lower_q, upper_q = np.percentile(values, HYPERSIM_SCATTER_PERCENTILE_LIMITS)
+    spread = max(float(upper_q - lower_q), 1e-6)
+    axis_min = math.floor(max(0.0, float(lower_q) - 0.05 * spread))
+    axis_max = math.ceil(float(upper_q) + 0.05 * spread)
+    if axis_max <= axis_min:
+        axis_max = axis_min + HYPERSIM_SCATTER_TICK_STEP
+    return float(axis_min), float(axis_max)
 
 
 def plot_scatter_pred_vs_gt(
@@ -129,6 +160,8 @@ def plot_scatter_pred_vs_gt(
     margin = max(1e-6, 0.025 * (axis_max - axis_min))
     axis_min = max(1e-6 if log_depth else 0.0, axis_min - margin)
     axis_max = axis_max + margin
+    if dataset == "hypersim" and not log_depth:
+        axis_min, axis_max = _hypersim_axis_limits(all_values)
 
     n = len(plot_data)
     ncols = min(3, n)
@@ -136,44 +169,57 @@ def plot_scatter_pred_vs_gt(
     fig, axes = plt.subplots(
         nrows,
         ncols,
-        figsize=(4.6 * ncols, 4.4 * nrows),
+        figsize=(5.85 * ncols, 5.7 * nrows),
         squeeze=False,
         constrained_layout=True,
     )
     axes_flat = axes.ravel()
     for ax, (entry, gt_points, pred_points) in zip(axes_flat, plot_data):
-        alpha = 0.07 if gt_points.size > 20_000 else 0.18
-        ax.scatter(gt_points, pred_points, s=2.2, alpha=alpha, color="#2f6fbb", linewidths=0, rasterized=True)
-        ax.plot([axis_min, axis_max], [axis_min, axis_max], color="#222222", linewidth=1.0, linestyle="--")
+        alpha = 0.35 if gt_points.size > 20_000 else 0.55
+        ax.scatter(gt_points, pred_points, s=2.2, alpha=alpha, color=SCATTER_COLOR, linewidths=0, rasterized=True)
+        ax.plot(
+            [axis_min, axis_max],
+            [axis_min, axis_max],
+            color=REFERENCE_LINE_COLOR,
+            linewidth=1.0,
+            linestyle="--",
+        )
         ax.set_xlim(axis_min, axis_max)
         ax.set_ylim(axis_min, axis_max)
         if log_depth:
             ax.set_xscale("log")
             ax.set_yscale("log")
+        elif dataset == "hypersim":
+            ax.xaxis.set_major_locator(MultipleLocator(HYPERSIM_SCATTER_TICK_STEP))
+            ax.yaxis.set_major_locator(MultipleLocator(HYPERSIM_SCATTER_TICK_STEP))
         ax.set_aspect("equal", adjustable="box")
-        ax.grid(alpha=0.22, linewidth=0.7)
-        ax.set_title(entry_label(entry, multiline=False), fontsize=10, fontweight="bold")
+        ax.grid(color=GRID_COLOR, alpha=0.22, linewidth=0.7)
+        ax.set_title(
+            entry_label(entry, multiline=False, include_alignment=False),
+            fontsize=FIGURE_FONT_SIZE,
+            fontweight="bold",
+        )
         ax.set_xlabel("GT depth (m)")
-        ax.set_ylabel("Predicted depth (m)")
+        ax.set_ylabel("Pred depth (m)")
+        ax.tick_params(axis="both", labelsize=FIGURE_FONT_SIZE)
         ax.text(
             0.04,
             0.96,
-            metric_text(entry, sampled_points=int(gt_points.size)),
+            metric_text(entry),
             transform=ax.transAxes,
             va="top",
             ha="left",
-            fontsize=8,
-            bbox={"facecolor": "white", "edgecolor": "#bbbbbb", "alpha": 0.86, "boxstyle": "round,pad=0.25"},
+            fontsize=FIGURE_FONT_SIZE,
+            bbox={
+                "facecolor": ANNOTATION_FACE_COLOR,
+                "edgecolor": ANNOTATION_EDGE_COLOR,
+                "alpha": 0.86,
+                "boxstyle": "round,pad=0.25",
+            },
         )
     for ax in axes_flat[len(plot_data) :]:
         ax.axis("off")
 
-    title = f"{dataset}: predicted depth vs GT"
-    if protocol != "primary" or include_reference:
-        title += f" ({protocol}{' + reference' if include_reference else ''})"
-    if log_depth:
-        title += " - log scale"
-    fig.suptitle(title, fontsize=13, fontweight="bold")
     suffix = figure_suffix(protocol, include_reference)
     return save_figure(
         fig,
