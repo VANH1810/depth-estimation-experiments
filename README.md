@@ -117,8 +117,6 @@ The table below summarizes the main raw metric-depth results. No ground-truth sc
 | HyperSim | ZoeDepth | zero-shot | 98 | 0.245 | 0.181 | 0.536 | 0.483 | 0.627 |
 | HyperSim | DA-V2 Metric Base | in-domain reference | 98 | **0.047** | **0.010** | **0.160** | **0.122** | **0.997** |
 
-### 5.1. Selected Figures
-
 **Qualitative depth examples on DepthTest and HyperSim**
 
 ![Qualitative depth samples](results/figures/depth_hypersim_qualitative_samples.png)
