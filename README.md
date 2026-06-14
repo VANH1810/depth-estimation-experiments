@@ -68,6 +68,7 @@ The project does not train or fine-tune the evaluated models. It focuses on infe
   - [3.2. HyperSim](#32-hypersim)
 - [4. Models and Checkpoints](#4-models-and-checkpoints)
 - [5. Key Results](#5-key-results)
+  - [5.1. Selected Figures](#51-selected-figures)
 - [6. Installation](#6-installation)
 - [7. Data Preparation](#7-data-preparation)
 - [8. Running Experiments](#8-running-experiments)
@@ -115,6 +116,20 @@ The table below summarizes the main raw metric-depth results. No ground-truth sc
 | HyperSim | UniDepth | zero-shot | 98 | 0.132 | 0.592 | 0.526 | 0.287 | 0.954 |
 | HyperSim | ZoeDepth | zero-shot | 98 | 0.245 | 0.181 | 0.536 | 0.483 | 0.627 |
 | HyperSim | DA-V2 Metric Base | in-domain reference | 98 | **0.047** | **0.010** | **0.160** | **0.122** | **0.997** |
+
+### 5.1. Selected Figures
+
+**Qualitative depth examples on DepthTest and HyperSim**
+
+![Qualitative depth samples](results/figures/depth_hypersim_qualitative_samples.png)
+
+**DepthTest predicted depth vs ground-truth depth**
+
+![DepthTest scatter plot](results/figures/depth_test_scatter_pred_vs_gt.png)
+
+**Lighting robustness across brightness perturbations**
+
+![Lighting robustness](results/figures/lighting_robustness_combined.png)
 
 ## 6. Installation
 

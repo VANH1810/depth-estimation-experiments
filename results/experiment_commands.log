@@ -1,0 +1,40 @@
+# Environment checks
+python -m src.experiments.run_depth_test --help
+python -m src.experiments.run_hypersim --help
+python -m src.experiments.compare_models --help
+python -m src.experiments.run_all_experiments --help
+python -m src.visualization.make_report_figures --help
+
+# Dependency installed during this run
+python -m pip install "transformers>=4.45.0"
+
+# Smoke experiments completed on CPU with --limit 5
+python -m src.experiments.run_all_experiments --datasets depth_test hypersim --models unidepth depth_anything_v2_small zoedepth --device cpu --limit 5 --overwrite --output-root results
+python -m src.experiments.run_hypersim --model depth_anything_v2_small --limit 5 --device cpu --overwrite
+python -m src.experiments.run_hypersim --model unidepth --limit 5 --device cpu --overwrite
+python -m src.experiments.run_all_experiments --datasets depth_test hypersim --models zoedepth --device cpu --limit 1 --overwrite --skip-figures --output-root results --job-timeout-seconds 180
+python -m src.experiments.run_depth_test --model zoedepth --limit 5 --device cpu --overwrite
+python -m src.experiments.run_hypersim --model zoedepth --limit 5 --device cpu --overwrite
+
+# Comparison and report figures
+python -m src.experiments.compare_models --results_root results --datasets depth_test hypersim --models unidepth depth_anything_v2_small zoedepth --overwrite
+python -m src.visualization.make_report_figures --results-root results --datasets depth_test hypersim --output-dir results/figures --max-samples 5 --alignment-for-relative scale_shift_aligned --dpi 300 --overwrite
+
+# Recommended full run on CUDA
+python -m src.experiments.run_all_experiments --datasets depth_test hypersim --models unidepth depth_anything_v2_small zoedepth --device cuda --overwrite --output-root results --job-timeout-seconds 0
+python -m src.visualization.make_report_figures --results-root results --datasets depth_test hypersim --output-dir results/figures --max-samples 5 --alignment-for-relative scale_shift_aligned --dpi 300 --overwrite
+
+# Depth Anything V2 Metric Indoor update (2026-06-11)
+hf models info depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf --format json
+hf models info depth-anything/Depth-Anything-V2-Metric-Indoor-Base-hf --format json
+python -m src.experiments.run_all_experiments --datasets depth_test --models depth_anything_v2_metric_indoor --device cpu --limit 5 --overwrite --output-root results --job-timeout-seconds 600
+python -m src.experiments.run_all_experiments --datasets hypersim --models depth_anything_v2_metric_indoor --device cpu --limit 5 --overwrite --output-root results --allow-train-overlap-reference --job-timeout-seconds 600
+python -m src.experiments.compare_models --results_root results --datasets depth_test hypersim --models unidepth depth_anything_v2_small zoedepth depth_anything_v2_metric_indoor_small --overwrite
+python -m src.visualization.make_report_figures --results-root results --datasets depth_test hypersim --output-dir results/figures --max-samples 5 --alignment-for-relative scale_shift_aligned --dpi 300 --overwrite
+
+# Recommended full CUDA primary/reference runs
+python -m src.experiments.run_all_experiments --datasets depth_test --models unidepth zoedepth depth_anything_v2_metric_indoor --device cuda --overwrite --output-root results --job-timeout-seconds 0
+python -m src.experiments.run_all_experiments --datasets hypersim --models unidepth zoedepth --device cuda --overwrite --output-root results --job-timeout-seconds 0
+python -m src.experiments.run_all_experiments --datasets hypersim --models depth_anything_v2_metric_indoor --device cuda --overwrite --output-root results --allow-train-overlap-reference --job-timeout-seconds 0
+python -m src.experiments.run_all_experiments --datasets depth_test hypersim --models depth_anything_v2_small --alignments raw median_aligned scale_shift_aligned --device cuda --overwrite --output-root results --job-timeout-seconds 0
+python inline: AutoImageProcessor/AutoModelForDepthEstimation load check for depth-anything/Depth-Anything-V2-Metric-Indoor-Base-hf
