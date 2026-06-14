@@ -78,7 +78,7 @@ The project does not train or fine-tune the evaluated models. It focuses on infe
   - [8.4. Robustness Experiments](#84-robustness-experiments)
   - [8.5. Tables and Figures](#85-tables-and-figures)
 - [9. Repository Structure](#9-repository-structure)
-- [10. Development Workflow](#10-development-workflow)
+- [10. Contact](#10-contact)
 
 ## 3. Datasets
 
@@ -328,43 +328,43 @@ src/                  Main experiment, evaluation, model, and visualization code
 requirements.txt      Python dependencies for the experiment pipeline.
 ```
 
-### 9.1. Main Source Modules
+### Main Source Modules
 
-| Path | Purpose |
-| --- | --- |
-| `src/common/pipeline.py` | Shared pipeline for sample loading, inference, prediction resizing, metric computation, and output writing. |
-| `src/datasets/depth_test.py` | RealSense DepthTest loader. |
-| `src/datasets/hypersim.py` | Extracted HyperSim RGB-depth loader. |
-| `src/datasets/extract_hypersim.py` | HyperSim HDF5 extraction logic. |
-| `src/models/base.py` | Common model-runner interface. |
-| `src/models/factory.py` | Model registry used by CLI keys. |
-| `src/models/unidepth_runner.py` | UniDepth runner with camera/intrinsics handling. |
-| `src/models/zoedepth_runner.py` | ZoeDepth runner through Hugging Face Transformers. |
-| `src/models/depth_anything_v2_runner.py` | Depth Anything V2 relative and metric-indoor runners. |
-| `src/evaluation/metrics.py` | AbsRel, SqRel, RMSE, MAE, RMSE log, δ1/δ2/δ3. |
-| `src/evaluation/alignment.py` | Raw, median-aligned, and scale-shift-aligned evaluation modes. |
-| `src/experiments/run_depth_test.py` | DepthTest CLI entry point. |
-| `src/experiments/run_hypersim.py` | HyperSim CLI entry point. |
-| `src/experiments/run_all_experiments.py` | Unified baseline and robustness runner. |
-| `src/experiments/compare_models.py` | Comparison table builder. |
-| `src/experiments/exp2_resolution.py` | Resolution sensitivity experiment. |
-| `src/experiments/exp3_lighting.py` | Brightness robustness experiment. |
-| `src/experiments/robustness_common.py` | Shared robustness evaluation loop. |
-| `src/transforms/resolution.py` | RGB resizing and camera-intrinsics scaling. |
-| `src/transforms/lighting.py` | Brightness perturbation transform. |
-| `src/visualization/make_report_figures.py` | Main report-figure CLI. |
-| `src/visualization/plot_robustness_combined.py` | Combined robustness figure generation. |
-| `src/utils/` | I/O, path, and visualization helpers. |
-
-## 10. Development Workflow
-
-Before submitting changes:
-
-```bash
-python -m compileall src
-python -m src.experiments.run_all_experiments --help
-python -m src.experiments.compare_models --help
-python -m src.visualization.make_report_figures --help
+```text
+src/
+├── common/
+│   └── pipeline.py                    # shared sample loading, inference, metrics, and output writing
+├── datasets/
+│   ├── depth_test.py                  # RealSense DepthTest loader
+│   ├── hypersim.py                    # extracted HyperSim RGB-depth loader
+│   └── extract_hypersim.py            # HyperSim HDF5 extraction logic
+├── models/
+│   ├── base.py                        # common model-runner interface
+│   ├── factory.py                     # model registry used by CLI keys
+│   ├── unidepth_runner.py             # UniDepth inference wrapper
+│   ├── zoedepth_runner.py             # ZoeDepth inference wrapper
+│   └── depth_anything_v2_runner.py    # Depth Anything V2 runners
+├── evaluation/
+│   ├── metrics.py                     # AbsRel, SqRel, RMSE, MAE, RMSE log, δ metrics
+│   └── alignment.py                   # raw, median-aligned, and scale-shift-aligned protocols
+├── experiments/
+│   ├── run_depth_test.py              # DepthTest CLI entry point
+│   ├── run_hypersim.py                # HyperSim CLI entry point
+│   ├── run_all_experiments.py         # unified baseline and robustness runner
+│   ├── compare_models.py              # comparison table builder
+│   ├── exp2_resolution.py             # resolution sensitivity experiment
+│   ├── exp3_lighting.py               # brightness robustness experiment
+│   └── robustness_common.py           # shared robustness evaluation loop
+├── transforms/
+│   ├── resolution.py                  # RGB resizing and intrinsics scaling
+│   └── lighting.py                    # brightness perturbation transform
+├── visualization/
+│   ├── make_report_figures.py         # main report-figure CLI
+│   └── plot_robustness_combined.py    # combined robustness plots
+└── utils/                             # I/O, path, and visualization helpers
 ```
 
-Then run at least one CPU smoke experiment for each affected dataset or model. Check generated files under `results/` before committing because large outputs are intentionally ignored or committed separately.
+## 10. Contact
+
+For questions, feedback, or reproduction details, please contact:  
+📧 [23021471@vnu.edu.vn](mailto:23021471@vnu.edu.vn) (Tran Quoc Viet Anh)
